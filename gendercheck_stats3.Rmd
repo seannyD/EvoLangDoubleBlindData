@@ -1,0 +1,241 @@
+---
+title: "The impact of double blind reviewing\\at EvoLang 11: statistics"
+output: html_document
+---
+
+# Data
+
+This script uses two data files.
+
+AllConferenceData.csv
+---------------------
+
+-  Score.Mean:  Mean raw score given by reviewers (scaled between 0 and 1, hierh = better paper)
+-  FirstAuthorGender:  Gender of first author
+-  conference:  Which conference the paper was submitted to
+-  rank:  scaled rank within each conference (higher = better paper)
+-  year:  Year number (1-3, for convenience)
+-  review:  Type of review (Single / Double blind)
+
+
+sameAuthorData_3conferences_Differences.csv
+-------------------------------------------
+
+-  X: arbitrary author number
+-  e10:  best rank for first-authored paper by this author in EvoLang 10
+-  e11:  best rank for first-authored paper by this author in EvoLang 11
+-  gender: gender of author
+-  student: whether the author was a student *in EvoLang 10*
+-  maletype:  The strength of the male typing of the topic of the paper (see supplementary materials)
+-  diff10_11:  The difference between e10 and e11, for convenience
+
+This data is also available in a different format in "sameAuthorData_3conferences.csv", which also contains data from EvoLang 9.  In the main analysis, it was decided that there were too few authors who applied to all three conferences to take advantage of this.
+
+# Loading data for first analysis
+
+Load libraries.
+
+```{r results='hide'}
+# Load data
+library(lattice)
+library(ggplot2)
+library(gplots)
+library(xtable)
+library(party)
+
+```
+
+```{r echo=F}
+try(setwd("~/Documents/Conferences/Evolang11/GenderCheck/"))
+```
+
+
+```{r}
+
+# read data
+allData = read.csv("AllConferenceData.csv",stringsAsFactors = F)
+# relabel factor
+allData$FirstAuthorGender = factor(allData$FirstAuthorGender,labels=c("Female","Male"))
+allData$review = factor(allData$review,levels = c("Single","Double"))
+allData$conference = factor(allData$conference,levels = c("EvoLang9","EvoLang10","EvoLang11"))
+allData$student = factor(allData$student)
+# get rid of unneed columns
+allData = allData[,!names(allData) %in% c("AuthorCode",'maletype','X')]
+
+allData$conference.name = c(EvoLang9="E9", EvoLang10="E10", EvoLang11="E11")[allData$conference]
+allData$conference.name = factor(allData$conference.name,levels = c("E9","E10","E11"))
+
+
+```
+
+Look at the distribution of submissions:
+
+```{r}
+table(allData$conference, allData$FirstAuthorGender, allData$student)
+```
+
+Look at the distributions of raw scores by conference:
+
+```{r}
+# Plot data
+# Histograms of raw score means by conference
+#pdf("Hist_3conf.pdf", height=4, width=12)
+par(mfrow=c(1,3))
+for(i in levels(allData$conference)){
+  hist(allData[allData$conference==i,]$Score.Mean, xlab="Mean paper score", main=i)
+}
+#dev.off()
+par(mrow=c(1,1))
+
+```
+
+The raw scores are shifted to the right for EvoLang 10 and 11:
+
+```{r}
+summary(aov(Score.Mean ~ conference,data=allData))
+```
+
+So we'll use normalised rank instead of raw score.
+
+# Review ranks by gender and student status
+
+```{r}
+m = aov(rank~(FirstAuthorGender*conference*student), data = allData)
+summary(m)
+
+```
+
+```{r echo=F}
+
+res <- as.data.frame(summary(m)[[1]])
+res[is.na(res)] = ""
+
+res$sig = ""
+res[res$`Pr(>F)` < 0.09,  ]$sig = "."
+res[res$`Pr(>F)` < 0.05,  ]$sig = "*"
+res[res$`Pr(>F)` < 0.001,  ]$sig = "**"
+
+
+rownames(res) = gsub(":"," x ",rownames(res))
+rownames(res) = gsub("FirstAuthorGender","First author gender",rownames(res))
+rownames(res) = gsub("conference","Conference:",rownames(res))
+rownames(res) = gsub("student","Student status",rownames(res))
+
+res$`F value` = as.numeric(res$`F value`)
+res$`Pr(>F)` = as.numeric(res$`Pr(>F)`)
+
+tab.display = c("s",'d','f','f','f','g','f')
+tab.digits  = c(2 , 3 , 3 , 2 , 2 , 2 ,  2)
+tab.label = 'tab:regressionTable'
+tab.cation = "Results of a linear regression carried out on the data.  Predicted (scaled) rank of paper by conference, gender of first authors and student status, with a baseline taken from female non-students from EvoLang 9."
+
+res.table = xtable(res, display = tab.display, digits=tab.digits, label = tab.label )
+
+x <- capture.output(out <- print(res.table, type='latex'))
+cat(out, file="writeup/latexBits/rankByGenderStudentConference.tex")
+
+```
+
+## Post hoc t-tests
+
+Whole data:
+
+```{r}
+t.test(rank~FirstAuthorGender, data=allData)
+```
+
+Compare genders within each conference:
+
+```{r}
+t.test.string = function(tx){
+  t = signif(tx$statistic,2)
+  df = tx$parameter['df']
+  p = signif(tx$p.value,3)
+  est = signif(diff(tx$estimate),2)
+  
+  paste("(difference in means = ",est,", t = ",t,", p = ",p,")",sep = "")
+}
+
+# EvoLang 9
+t.test.string(t.test(rank~FirstAuthorGender, data=allData[allData$conference=='EvoLang9',]))
+# EvoLang 10
+t.test.string(t.test(rank~FirstAuthorGender, data=allData[allData$conference=='EvoLang10',]))
+# EvoLang 11
+t.test.string(t.test(rank~FirstAuthorGender, data=allData[allData$conference=='EvoLang11',]))
+
+```
+
+## Decision tree
+
+Use classification trees to explore data.  We've changed the minimum criterion from 95\% to 94\% in order to show some of the structure.
+
+```{r fig.width=12}
+x = ctree(rank~FirstAuthorGender+conference+student,data=allData, controls=ctree_control(mincriterion = 0.94) )
+plot(x)
+
+```
+
+This is broadly in agreement with regressions above.  It suggests that female first authored papers are generally higher, but ranking of male papers declines in EvoLang 11.
+
+
+# Data on same authors: differences between E10 and E11
+
+```{r}
+sameAuthorData3 = read.csv("sameAuthorData_3conferences_Differences.csv", stringsAsFactors = T)
+
+summary(lm(diff10_11~gender*student, data=sameAuthorData3))
+
+```
+
+
+
+# Plots
+
+Plot data:  Violin plots of rank by student status in each conference.
+
+```{r}
+
+source("summarySE.r")
+
+pdf("Results_Student_3conf.pdf", width = 12, height= 6)
+
+p <- ggplot(allData[complete.cases(allData),], aes(factor(conference.name):factor(student), rank, fill=student))
+
+p + geom_violin() + geom_boxplot(width=0.1) +
+  theme(text=element_text(size=20), legend.position="none") +
+  scale_y_continuous(name="Score ranking")+
+  scale_x_discrete(name="")+
+  scale_fill_grey(start = 0.55, end=0.8)
+dev.off()
+
+```
+
+Rank by gender
+
+```{r}
+
+# Plot data:  Violin plots of rank by gender in E10 and E11
+pdf("Results_Gender_3conf.pdf", width = 12, height= 6)
+p2 <- ggplot(allData[!is.na(allData$FirstAuthorGender),], aes(factor(conference.name):factor(FirstAuthorGender), rank, fill=FirstAuthorGender))
+
+p2 + geom_violin() + geom_boxplot(width=0.1) +
+  theme(text=element_text(size=20), legend.position="none") +
+  scale_y_continuous(name="Score ranking")+
+  scale_x_discrete(name="")+
+  scale_fill_grey(start = 0.55, end=0.8)
+dev.off()
+```
+
+Improvement between E10 and E11 for paired data.
+
+```{r}
+p3 <- ggplot(sameAuthorData3, aes(factor(student):factor(gender), diff10_11, fill=gender))
+pdf("Improvement_3conf.pdf", width = 12, height= 6)
+p3 + geom_violin() + geom_boxplot(width=0.1, col=1) +
+  theme(text=element_text(size=20), legend.position="none") +
+  scale_y_continuous(name="Difference in Score ranking E10 - E11")+
+  scale_x_discrete(name="")+
+  scale_fill_grey(start = 0.55, end=0.8)
+dev.off()
+
+```

@@ -4,4 +4,4 @@ The impact of introducing double blind reviewing in the most recent Evolution of
 
 See the [writeup here](writeup/EvoLangRankingStudy3Conferences.pdf)
 
-And the [stats here](gendercheck_stats3.html)# EvoLangDoubleBlindData
+And the [stats here](gendercheck_stats3.html)
