@@ -3,6 +3,10 @@ title: "The impact of double blind reviewing\\at EvoLang 11: statistics"
 output: html_document
 ---
 
+# Introduction
+
+Note that the analysis here has changed since the original submission, updating three data points with incorrectly assigned genders and adding an extra analysis with deviation coding instead of dummy coding.  The original script and results can be found in the file 'gendercheck_stats3_original.html'.
+
 # Data
 
 This script uses two data files.
@@ -44,11 +48,6 @@ library(xtable)
 library(party)
 
 ```
-
-```{r echo=F}
-try(setwd("~/Documents/Conferences/Evolang11/GenderCheck/"))
-```
-
 
 ```{r}
 
@@ -132,7 +131,7 @@ tab.cation = "Results of a linear regression carried out on the data.  Predicted
 res.table = xtable(res, display = tab.display, digits=tab.digits, label = tab.label )
 
 x <- capture.output(out <- print(res.table, type='latex'))
-cat(out, file="writeup/latexBits/rankByGenderStudentConference.tex")
+try(cat(out, file="../GenderCheck/writeup/latexBits/rankByGenderStudentConference.tex"))
 
 ```
 
@@ -182,11 +181,61 @@ This is broadly in agreement with regressions above.  It suggests that female fi
 
 ```{r}
 sameAuthorData3 = read.csv("sameAuthorData_3conferences_Differences.csv", stringsAsFactors = T)
+```
 
+The original results reported in the paper used a linear regression with dummy coding:
+
+```{r}
 summary(lm(diff10_11~gender*student, data=sameAuthorData3))
+```
+
+However, the data appears more like an interaction with no main effect.  Indeed, when using deviation coding, this is the case:
+
+```{r}
+summary(lm(diff10_11~gender*student,
+           data=sameAuthorData3, 
+           contrasts=list(
+             gender=contr.sum(2)/2,
+             student=contr.sum(2)/2)
+  ))
 
 ```
 
+## Permutation test
+
+```{r}
+#permutation test functions
+perm = function(dx){
+  diff(tapply(
+    dx$diff10_11,
+    sample(dx$gender),
+    mean))
+}
+perm.test = function(dx){
+  trueDiff =diff(tapply(
+    dx$diff10_11,
+    dx$gender,
+    mean))
+  permDiff = replicate(10000, perm(dx))
+  hist(permDiff, xlab='Difference between mean rise in score (E10-E11)\nbetween male and female first authors (permuted data)')
+  abline(v=trueDiff,col=2)
+  p = sum(permDiff < trueDiff) / length(permDiff)
+  z = (trueDiff - mean(permDiff))/sd(permDiff)
+  print(paste("Difference between true and permuted data: z = ",round(z,3),", p = ",round(p,3)))
+}
+```
+
+```{r}
+set.seed(6789)
+# Permutation test for whole data
+perm.test(sameAuthorData3)
+
+# Only for non-students
+perm.test(sameAuthorData3[sameAuthorData3$student=="Non-Student",])
+
+# Only for students
+perm.test(sameAuthorData3[sameAuthorData3$student=="Student",])
+```
 
 
 # Plots
