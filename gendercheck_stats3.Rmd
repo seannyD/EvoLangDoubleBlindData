@@ -185,6 +185,11 @@ We see that there is a weak effect of *po* on rank: more experienced submitters 
 plotmeans(rank~paste(po,FirstAuthorGender,sep='/'), data=allData,
           xlab='Experience of submitting to EvoLang / Gender',
           connect = list(1:2,3:4,5:6))
+
+studentYN = c("N",'Y')[1 + as.numeric(allData$student=="Student")]
+plotmeans(rank~paste(po,studentYN,sep='/'), data=allData,
+          xlab='Experience of submitting to EvoLang / Student?',
+          connect = list(1:2,3:4,5:6))
 ```
 
 
