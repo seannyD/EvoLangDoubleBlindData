@@ -1,6 +1,6 @@
 ---
-title: "The impact of double blind reviewing\\at EvoLang 11: statistics"
-output: html_document
+title: 'The impact of double blind reviewing at EvoLang 11: statistics'
+output: pdf_document
 ---
 
 # Introduction
