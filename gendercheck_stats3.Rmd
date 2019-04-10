@@ -292,21 +292,18 @@ perm.test(sameAuthorData3[sameAuthorData3$student=="Student",])
 Plot data:  Violin plots of rank by student status in each conference.
 
 ```{r}
-
 source("summarySE.r")
-
-
 
 p <- ggplot(allData[complete.cases(allData),], aes(factor(conference.name):factor(student), rank, fill=student))
 
-p <- p + geom_violin() + geom_boxplot(width=0.1) +
-  theme(text=element_text(size=20), legend.position="none") +
+p <- p + geom_violin() + geom_boxplot(width=0.1)  +
   scale_y_continuous(name="Score ranking")+
   scale_x_discrete(name="")+
-  scale_fill_grey(start = 0.55, end=0.8)
+  scale_fill_grey(start = 0.55, end=0.8) +
+  theme(legend.position="none")
 p
 pdf("Results_Student_3conf.pdf", width = 12, height= 6)
-p
+p + theme(text=element_text(size=20))
 dev.off()
 
 ```
@@ -320,7 +317,7 @@ Rank by gender
 p2 <- ggplot(allData[!is.na(allData$FirstAuthorGender),], aes(factor(conference.name):factor(FirstAuthorGender), rank, fill=FirstAuthorGender))
 
 p2 <- p2 + geom_violin() + geom_boxplot(width=0.1) +
-  theme(text=element_text(size=20), legend.position="none") +
+  theme(legend.position="none") +
   scale_y_continuous(name="Score ranking")+
   scale_x_discrete(name="")+
   scale_fill_grey(start = 0.55, end=0.8)
@@ -328,7 +325,7 @@ p2 <- p2 + geom_violin() + geom_boxplot(width=0.1) +
 p2
 
 pdf("Results_Gender_3conf.pdf", width = 12, height= 6)
-p2
+p2 + theme(text=element_text(size=20))
 dev.off()
 ```
 
@@ -338,13 +335,13 @@ Improvement between E10 and E11 for paired data.
 p3 <- ggplot(sameAuthorData3, aes(factor(student):factor(gender), diff10_11, fill=gender))
 
 p3 <- p3 + geom_violin() + geom_boxplot(width=0.1, col=1) +
-  theme(text=element_text(size=20), legend.position="none") +
+  theme(legend.position="none") +
   scale_y_continuous(name="Difference in Score ranking E10 - E11")+
   scale_x_discrete(name="")+
   scale_fill_grey(start = 0.55, end=0.8)
 p3
 pdf("Improvement_3conf.pdf", width = 12, height= 6)
-p3
+p3 + theme(text=element_text(size=20))
 dev.off()
 
 ```
